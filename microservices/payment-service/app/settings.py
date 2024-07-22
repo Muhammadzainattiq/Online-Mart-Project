@@ -7,3 +7,6 @@ except FileNotFoundError:
     config = Config()
 
 DATABASE_URL = config("DATABASE_URL")
+
+KAFKA_BOOTSTRAP_SERVER = config("KAFKA_BOOTSTRAP_SERVER")
+

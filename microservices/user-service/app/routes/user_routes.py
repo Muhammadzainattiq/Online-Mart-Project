@@ -6,13 +6,24 @@ from app.handlers.user_crud import (
     read_user_by_email,
     read_all_users,
     update_user_by_id,
-    delete_user_by_id
+    delete_user_by_id,
+    add_payment_details,
+    get_payment_details
+
 )
-from app.models.user_models import UserModel, UserUpdate
+from app.models.user_models import PaymentDetails, UserModel, UserUpdate
 from app.db.db_connection import get_session
 
 user_router = APIRouter(prefix="/user")
 
+@user_router.post('/add_user_payment_details')
+async def add_user_payment_details(added_details:Annotated[PaymentDetails, Depends(add_payment_details)]):
+    return added_details
+
+@user_router.get('/get_payment_details/{user_id}')
+async def get_user_payment_details(details: Annotated[PaymentDetails, Depends(get_payment_details)]):
+    return details
+    
 
 @user_router.get('/get_user_by_id/{user_id}')
 async def get_user_by_id(user: Annotated[UserModel, Depends(read_user_by_id)]):

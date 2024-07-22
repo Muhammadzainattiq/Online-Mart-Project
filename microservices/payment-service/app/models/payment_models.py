@@ -3,14 +3,18 @@ from datetime import datetime
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional
 
+
 class PaymentStatus(str, Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
+    RETURNED = "returned"
+
 
 class PaymentMethod(str, Enum):
-    CREDIT_CARD = "credit_card"
-    PAYPAL = "paypal"
+    STRIPE = "stripe"
+    PAYFAST = "pay_fast"
+
 
 class PaymentCreate(SQLModel):
     order_id: int
@@ -18,21 +22,16 @@ class PaymentCreate(SQLModel):
     amount: float
     method: PaymentMethod
 
-class Payment(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    order_id: int = Field(foreign_key="order.id", unique=True)
-    user_id: int
-    amount: float
+
+class Payment(PaymentCreate, table=True):
+    id: int | None = Field(default=None, primary_key=True)
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
-    method: PaymentMethod
     transaction_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    order: "Order" = Relationship(back_populates="payment")
+class PaymentUser(SQLModel, table=True):
+    user_id: int = Field(primary_key=True)
+    card_number: str
+    card_cvc: str
+    card_expiry: str
 
-class Order(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int
-    total_amount: float
-    status: str
-    payment: Optional[Payment] = Relationship(back_populates="order")

@@ -18,6 +18,9 @@ async def consume_events():
         'order_returned',
         'order_cancelled',
         'insufficient_stock_information',
+        'payment_successful',
+        'payment_failed',
+        'payment_returned_successful',
         bootstrap_servers='broker:19092',
         group_id="notification_service_group",
         auto_offset_reset='earliest'
@@ -51,13 +54,20 @@ async def handle_event(event):
         await handle_order_cancelled(event)
     elif event_type == "insufficient_stock_information":
         await handle_insufficient_stock_information(event)
+    elif event_type == "payment_successful":
+        await handle_payment_successful(event)
+    elif event_type == "payment_failed":
+        await handle_payment_failed(event)
+    elif event_type == "payment_returned_successful":
+        await handle_payment_returned_successful(event)
+    else:
+        print(f"Unhandled event type: {event_type}")
 
 async def handle_user_creation(event):
     user_id = event.get('user_id')
     user_name = event.get('user_name')
     user_email = event.get('user_email')
 
-    print("Creating user in database")
     with Session(engine) as session:
         user = NotificationUser(user_id=user_id, user_name=user_name, user_email=user_email)
         session.add(user)
@@ -75,11 +85,9 @@ async def handle_user_updation(event):
     user_name = event.get('user_name')
     user_email = event.get('user_email')
 
-    # Updating the notification user model
     with Session(engine) as session:
         notification_user = session.get(NotificationUser, user_id)
         if notification_user:
-            # Ensure it is the correct instance type
             notification_user.user_email = user_email
             notification_user.user_name = user_name
             session.add(notification_user)
@@ -101,7 +109,6 @@ async def handle_user_deletion(event):
     message = f"Sad to see you go Dear Mr/Ms {user_name}."
 
     notification = NotificationCreate(user_id=user_id, message=message)
-
     await create_notification_and_send(notification)
 
     with Session(engine) as session:
@@ -112,22 +119,14 @@ async def handle_user_deletion(event):
         else:
             print(f"User with ID {user_id} not found")
 
-    
-
-
-
 async def handle_order_processing(event):
     order_id = event.get('order_id')
     user_id = event.get('user_id')
     order_date = event.get('order_date')
     shipping_address = event.get('shipping_address')
     total_amount = event.get('total_amount')
-    order_items = event.get('order_items')
-    
-    if order_items is None:
-        order_items = []
+    order_items = event.get('order_items', [])
 
-    # Constructing a detailed message
     order_items_details = "\n".join([
         f"Product ID: {item['product_id']}, Color ID: {item['color_id']}, Size ID: {item['size_id']}, Quantity: {item['quantity']}"
         for item in order_items
@@ -148,20 +147,14 @@ async def handle_order_processing(event):
     notification = NotificationCreate(user_id=user_id, message=message)
     await create_notification_and_send(notification)
 
-
-
 async def handle_order_shipped(event):
     order_id = event.get('order_id')
     user_id = event.get('user_id')
     order_date = event.get('order_date')
     shipping_address = event.get('shipping_address')
     total_amount = event.get('total_amount')
-    order_items = event.get('order_items')
+    order_items = event.get('order_items', [])
 
-    if order_items is None:
-        order_items = []
-
-    # Constructing a detailed message
     order_items_details = "\n".join([
         f"Product ID: {item['product_id']}, Color ID: {item['color_id']}, Size ID: {item['size_id']}, Quantity: {item['quantity']}"
         for item in order_items
@@ -179,11 +172,8 @@ async def handle_order_shipped(event):
         f"Status: Shipped\n"
     )
 
-
     notification = NotificationCreate(user_id=user_id, message=message)
     await create_notification_and_send(notification)
-
-
 
 async def handle_order_delivered(event):
     order_id = event.get('order_id')
@@ -191,12 +181,8 @@ async def handle_order_delivered(event):
     order_date = event.get('order_date')
     shipping_address = event.get('shipping_address')
     total_amount = event.get('total_amount')
-    order_items = event.get('order_items')
-    
-    if order_items is None:
-            order_items = []
+    order_items = event.get('order_items', [])
 
-    # Constructing a detailed message
     order_items_details = "\n".join([
         f"Product ID: {item['product_id']}, Color ID: {item['color_id']}, Size ID: {item['size_id']}, Quantity: {item['quantity']}"
         for item in order_items
@@ -217,21 +203,14 @@ async def handle_order_delivered(event):
     notification = NotificationCreate(user_id=user_id, message=message)
     await create_notification_and_send(notification)
 
-
-
-
 async def handle_order_returned(event):
     order_id = event.get('order_id')
     user_id = event.get('user_id')
     order_date = event.get('order_date')
     shipping_address = event.get('shipping_address')
     total_amount = event.get('total_amount')
-    order_items = event.get('order_items')
-    
-    if order_items is None:
-        order_items = []
+    order_items = event.get('order_items', [])
 
-    # Constructing a detailed message
     order_items_details = "\n".join([
         f"Product ID: {item['product_id']}, Color ID: {item['color_id']}, Size ID: {item['size_id']}, Quantity: {item['quantity']}"
         for item in order_items
@@ -252,20 +231,14 @@ async def handle_order_returned(event):
     notification = NotificationCreate(user_id=user_id, message=message)
     await create_notification_and_send(notification)
 
-
 async def handle_order_cancelled(event):
     order_id = event.get('order_id')
     user_id = event.get('user_id')
     order_date = event.get('order_date')
     shipping_address = event.get('shipping_address')
     total_amount = event.get('total_amount')
-    order_items = event.get('order_items')
-    
-    if order_items is None:
-        order_items = []
+    order_items = event.get('order_items', [])
 
-
-    # Constructing a detailed message
     order_items_details = "\n".join([
         f"Product ID: {item['product_id']}, Color ID: {item['color_id']}, Size ID: {item['size_id']}, Quantity: {item['quantity']}"
         for item in order_items
@@ -286,7 +259,6 @@ async def handle_order_cancelled(event):
     notification = NotificationCreate(user_id=user_id, message=message)
     await create_notification_and_send(notification)
 
-
 async def handle_insufficient_stock_information(event):
     user_id = event.get('user_id')
     order_id = event.get('order_id')
@@ -298,7 +270,6 @@ async def handle_insufficient_stock_information(event):
     
     user_name = await get_user_name_from_id(user_id)
 
-    # Constructing a detailed message
     message = (
         f"Dear User {user_name},\n"
         f"Unfortunately, we do not have enough stock to fulfill your order with ID {order_id}.\n"
@@ -309,6 +280,55 @@ async def handle_insufficient_stock_information(event):
         f"  - Ordered Quantity: {order_quantity}\n"
         f"  - Available Stock: {present_stock}\n"
         f"Please update your order or contact our support team for further assistance.\n"
+    )
+
+    notification = NotificationCreate(user_id=user_id, message=message)
+    await create_notification_and_send(notification)
+
+async def handle_payment_successful(event):
+    user_id = event.get('user_id')
+    order_id = event.get('order_id')
+    payment_amount = event.get('payment_amount')
+
+    user_name = await get_user_name_from_id(user_id)
+
+    message = (
+        f"Dear User {user_name},\n"
+        f"Your payment for order ID {order_id} was successful.\n"
+        f"Amount: ${payment_amount}\n"
+    )
+
+    notification = NotificationCreate(user_id=user_id, message=message)
+    await create_notification_and_send(notification)
+
+async def handle_payment_failed(event):
+    user_id = event.get('user_id')
+    order_id = event.get('order_id')
+    payment_amount = event.get('payment_amount')
+
+    user_name = await get_user_name_from_id(user_id)
+
+    message = (
+        f"Dear User {user_name},\n"
+        f"Your payment for order ID {order_id} has failed.\n"
+        f"Amount: ${payment_amount}\n"
+        f"Please try again or contact support.\n"
+    )
+
+    notification = NotificationCreate(user_id=user_id, message=message)
+    await create_notification_and_send(notification)
+
+async def handle_payment_returned_successful(event):
+    user_id = event.get('user_id')
+    order_id = event.get('order_id')
+    refund_amount = event.get('refund_amount')
+
+    user_name = await get_user_name_from_id(user_id)
+
+    message = (
+        f"Dear User {user_name},\n"
+        f"Your payment for order ID {order_id} has been successfully refunded.\n"
+        f"Refund Amount: ${refund_amount}\n"
     )
 
     notification = NotificationCreate(user_id=user_id, message=message)

@@ -1,9 +1,10 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from typing import Annotated
-from app.models.user_models import User, UserUpdate
+from app.models.user_models import User, UserUpdate, PaymentDetails, PaymentDetailsCreate
 from app.db.db_connection import get_session, DB_SESSION
 from app.kafka.producer import KAFKA_PRODUCER, produce_message
+from app.utils import get_user_name_from_id
 app = FastAPI()
 
 
@@ -76,4 +77,26 @@ async def delete_user_by_id(
 
 
 
-app.include_router(router)
+async def add_payment_details(user_id: int, payment_details: PaymentDetailsCreate, session:  DB_SESSION, producer: KAFKA_PRODUCER = KAFKA_PRODUCER):
+    db_user = session.exec(select(User).where(User.user_id == user_id)).all()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db_payment = PaymentDetails(user_id=user_id, **payment_details.model_dump())
+    session.add(db_payment)
+    session.commit()
+    session.refresh(db_payment)
+    user_name = await get_user_name_from_id(user_id)
+    payment_details_dict = db_payment.model_dump()
+    event_dict = {"event_type": "user_payment_details_added", "user_name": user_name,**payment_details_dict}
+    await produce_message("user_payment_details_added", event_dict, producer)
+
+    return db_payment
+
+
+async def get_payment_details(user_id: int, session: DB_SESSION):
+    db_statement = select(PaymentDetails).where(PaymentDetails.user_id == user_id)
+    payment_details = session.exec(db_statement).first()
+    if not payment_details:
+        raise HTTPException(status_code=404, detail="Payment details not found")
+    return payment_details

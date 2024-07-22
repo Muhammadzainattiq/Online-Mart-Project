@@ -7,84 +7,90 @@ services:
       context: ./inventory-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./inventory-service:/code  # Sync local development directory with the container
+      - ./inventory-service:/code
     depends_on:
       - inventory_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@inventory_db:5432/inventorydb
+      TEST_DATABASE_URL: sqlite:///code/inventory_test.db
     ports:
-      - "9001:8000"  # Expose container port 8000 to host port 9001
+      - "9001:8000"
 
   notification:
     build:
       context: ./notification-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./notification-service:/code  # Sync local development directory with the container
+      - ./notification-service:/code
     depends_on:
       - notification_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@notification_db:5432/notificationdb
+      TEST_DATABASE_URL: sqlite:///code/notification_test.db
     ports:
-      - "9002:8000"  # Expose container port 8000 to host port 9002  
+      - "9002:8000"
 
   order:
     build:
       context: ./order-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./order-service:/code  # Sync local development directory with the container
+      - ./order-service:/code
     depends_on:
       - order_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@order_db:5432/orderdb
+      TEST_DATABASE_URL: sqlite:///code/order_test.db
     ports:
-      - "9003:8000"  # Expose container port 8000 to host port 9003  
+      - "9003:8000"
 
   payment:
     build:
       context: ./payment-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./payment-service:/code  # Sync local development directory with the container
+      - ./payment-service:/code
     depends_on:
       - payment_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@payment_db:5432/paymentdb
+      TEST_DATABASE_URL: sqlite:///code/payment_test.db
     ports:
-      - "9004:8000"  # Expose container port 8000 to host port 9004  
+      - "9004:8000"
 
   product:
     build:
       context: ./product-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./product-service:/code  # Sync local development directory with the container
+      - ./product-service:/code
     depends_on:
       - product_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@product_db:5432/productdb
+      TEST_DATABASE_URL: sqlite:///code/product_test.db
     ports:
-      - "9005:8000"  # Expose container port 8000 to host port 9005 
+      - "9005:8000"
 
   user:
     build:
       context: ./user-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./user-service:/code  # Sync local development directory with the container
+      - ./user-service:/code
     depends_on:
       - user_db
       - broker
     environment:
       DATABASE_URL: postgresql://zain:password@user_db:5432/userdb
+      TEST_DATABASE_URL: sqlite:///code/user_test.db
     ports:
-      - "9006:8000"  # Expose container port 8000 to host port 9006
+      - "9006:8000"
 
   inventory_db:
     image: postgres:latest
@@ -194,9 +200,6 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: 'Local Kafka Cluster'
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:19092'
-      DYNAMIC_CONFIG_ENABLED: "true"
-    depends_on:
-      - broker
 
 volumes:
   inventory_db:

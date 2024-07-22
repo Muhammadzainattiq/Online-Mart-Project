@@ -24,3 +24,8 @@ async def produce_message(topic:str, message:dict, producer:KAFKA_PRODUCER):
 
 
 
+async def init_kafka_producer():
+    producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
+    await producer.start()
+    return producer
+
