@@ -37,13 +37,14 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with lifespan context
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
+@app.get("/inventory")
 def home():
     return "Welcome to Inventory Service"
 
-@app.get("/health_check")
+@app.get("/inventory/health_check")
 async def health_check():
-   return {"status": "ok"}
+   return {"service": "Inventory",
+       "status": "ok"}
 
 @app.get("/inventory/read_inventory_item_by_id")
 async def read_inventory_item(

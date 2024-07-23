@@ -18,14 +18,15 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with lifespan context
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
+@app.get("/product")
 def home():
     return "Welcome to Product Service"
 
 
-@app.get("/health_check")
+@app.get("/product/health_check")
 async def health_check():
-   return {"status": "ok"}
+   return {"service": "Product",
+       "status": "ok"}
 
 # Include your routers or other configurations here
 app.include_router(product_router)

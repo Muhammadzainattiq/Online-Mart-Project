@@ -5,7 +5,7 @@ from app.models.payment_models import Payment, PaymentCreate, PaymentUser, Payme
 from app.db.db_connection import engine
 
 async def create_payment(payment_create: PaymentCreate, session: Session) -> Payment:
-    payment = Payment.from_orm(payment_create)
+    payment = Payment.model_validate(payment_create)
     session.add(payment)
     session.commit()
     session.refresh(payment)

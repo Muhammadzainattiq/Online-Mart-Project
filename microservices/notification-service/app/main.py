@@ -24,13 +24,14 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with lifespan context
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
+@app.get("/notification")
 def home():
     return "Welcome to Notification Service"
 
-@app.get("/health_check")
+@app.get("/notification/health_check")
 async def health_check():
-   return {"status": "ok"}
+   return {"service": "Notification",
+       "status": "ok"}
 
 
 @app.get("/notifications/{user_id}", response_model=list[Notification])

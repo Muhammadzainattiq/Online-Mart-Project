@@ -16,6 +16,8 @@ from app.db.db_connection import get_session
 
 user_router = APIRouter(prefix="/user")
 
+
+
 @user_router.post('/add_user_payment_details')
 async def add_user_payment_details(added_details:Annotated[PaymentDetails, Depends(add_payment_details)]):
     return added_details

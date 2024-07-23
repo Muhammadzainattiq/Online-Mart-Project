@@ -19,14 +19,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
+async def home():
+    return "Welcome to Online Mart Project"
+
+@app.get("/user")
 def home():
     return "Welcome to User Service"
 
 
-@app.get("/health_check")
+@app.get("/user/health_check")
 async def health_check():
-   return {"status": "ok"}
+   return {"service": "User",
+       "status": "ok"}
       
+
 # Include your routers or other configurations here
 app.include_router(user_router)
 app.include_router(user_auth_router)

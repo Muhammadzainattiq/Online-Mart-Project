@@ -21,9 +21,15 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with lifespan context
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
+@app.get("/payment")
 def home():
-    return "Welcome to User Service"
+    return "Welcome to Payment Service"
+
+
+@app.get("/payment/health_check")
+def health_check():
+    return {"service": "Payment",
+        "status": "ok"}
 
 # Include your routers or other configurations here
 app.include_router(payment_router)
