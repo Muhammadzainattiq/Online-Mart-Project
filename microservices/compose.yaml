@@ -16,6 +16,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/inventory_test.db
     ports:
       - "9001:8000"
+    networks:
+      - my_shared_network
 
   notification:
     build:
@@ -31,6 +33,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/notification_test.db
     ports:
       - "9002:8000"
+    networks:
+      - my_shared_network
 
   order:
     build:
@@ -46,6 +50,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/order_test.db
     ports:
       - "9003:8000"
+    networks:
+      - my_shared_network
 
   payment:
     build:
@@ -61,6 +67,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/payment_test.db
     ports:
       - "9004:8000"
+    networks:
+      - my_shared_network
 
   product:
     build:
@@ -76,6 +84,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/product_test.db
     ports:
       - "9005:8000"
+    networks:
+      - my_shared_network
 
   user:
     build:
@@ -91,6 +101,8 @@ services:
       TEST_DATABASE_URL: sqlite:///code/user_test.db
     ports:
       - "9006:8000"
+    networks:
+      - my_shared_network
 
   inventory_db:
     image: postgres:latest
@@ -104,6 +116,8 @@ services:
       - '5433:5432'
     volumes:
       - inventory_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   notification_db:
     image: postgres:latest
@@ -117,6 +131,8 @@ services:
       - '5434:5432'
     volumes:
       - notification_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   order_db:
     image: postgres:latest
@@ -130,6 +146,8 @@ services:
       - '5435:5432'
     volumes:
       - order_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   payment_db:
     image: postgres:latest
@@ -143,6 +161,8 @@ services:
       - '5436:5432'
     volumes:
       - payment_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   product_db:
     image: postgres:latest
@@ -156,6 +176,8 @@ services:
       - '5437:5432'
     volumes:
       - product_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   user_db:
     image: postgres:latest
@@ -169,6 +191,8 @@ services:
       - '5438:5432'
     volumes:
       - user_db:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
   broker:
     image: apache/kafka:3.7.0
@@ -191,6 +215,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+    networks:
+      - my_shared_network
 
   kafka-ui:
     image: provectuslabs/kafka-ui
@@ -200,6 +226,8 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: 'Local Kafka Cluster'
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:19092'
+    networks:
+      - my_shared_network
 
 volumes:
   inventory_db:
@@ -216,5 +244,6 @@ volumes:
     driver: local
 
 networks:
-  default:
-    driver: bridge
+  my_shared_network:
+    external:
+      name: my_shared_network

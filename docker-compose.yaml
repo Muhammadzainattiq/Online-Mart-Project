@@ -20,8 +20,10 @@ volumes:
       device: tmpfs
 
 networks:
-  default:
+  my_shared_network:
     driver: bridge
+
+
 
 services:
   kong-migrations:
@@ -35,6 +37,8 @@ services:
     secrets:
       - kong_postgres_password
     restart: on-failure
+    networks:
+      - my_shared_network
 
   kong-migrations-up:
     image: "${KONG_DOCKER_TAG:-kong:latest}"
@@ -47,6 +51,8 @@ services:
     secrets:
       - kong_postgres_password
     restart: on-failure
+    networks:
+      - my_shared_network
 
   kong:
     image: "${KONG_DOCKER_TAG:-kong:latest}"
@@ -65,15 +71,8 @@ services:
     secrets:
       - kong_postgres_password
     ports:
-      # The following two environment variables default to an insecure value (0.0.0.0)
-      # according to the CIS Security test.
       - "${KONG_INBOUND_PROXY_LISTEN:-0.0.0.0}:8000:8000/tcp"
       - "${KONG_INBOUND_SSL_PROXY_LISTEN:-0.0.0.0}:8443:8443/tcp"
-      # Making them mandatory but undefined, like so would be backwards-breaking:
-      # - "${KONG_INBOUND_PROXY_LISTEN?Missing inbound proxy host}:8000:8000/tcp"
-      # - "${KONG_INBOUND_SSL_PROXY_LISTEN?Missing inbound proxy ssl host}:8443:8443/tcp"
-      # Alternative is deactivating check 5.13 in the security bench, if we consider Kong's own config to be enough security here
-
       - "127.0.0.1:8001:8001/tcp"
       - "127.0.0.1:8444:8444/tcp"
       - "127.0.0.1:8002:8002/tcp"
@@ -87,9 +86,10 @@ services:
     volumes:
       - kong_prefix_vol:${KONG_PREFIX:-/var/run/kong}
       - kong_tmp_vol:/tmp
-      # - ./config:/opt/kong
     security_opt:
       - no-new-privileges
+    networks:
+      - my_shared_network
 
   db:
     image: postgres:latest
@@ -118,6 +118,8 @@ services:
     tty: true
     volumes:
       - kong_data:/var/lib/postgresql/data
+    networks:
+      - my_shared_network
 
 secrets:
   kong_postgres_password:

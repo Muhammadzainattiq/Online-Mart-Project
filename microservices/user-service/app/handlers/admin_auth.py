@@ -1,52 +1,42 @@
 from typing import Annotated
 from sqlmodel import Session, select
 from fastapi import Depends, HTTPException
+import httpx
+import os
+import logging
 from app.db.db_connection import get_session
 from app.handlers.auth_handlers import verify_password
-from app.settings import ADMIN_ACCESS_EXPIRY_TIME, ADMIN_REFRESH_EXPIRY_TIME
-from app.models.admin_models import (Admin, AdminToken, AdminSignUpModel, AdminLoginModel)
-from app.handlers.auth_handlers import password_hashing, verify_password, generate_token, decode_token
+from app.models.admin_models import Admin, AdminSignUpModel, AdminLoginModel
+from app.handlers.auth_handlers import password_hashing, verify_password, decode_token
 from fastapi.security import OAuth2PasswordBearer
+from app.kafka.producer import KAFKA_PRODUCER, produce_message
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_user")
 DB_SESSION = Annotated[Session, Depends(get_session)]
 
+KONG_ADMIN_URL = os.getenv("KONG_ADMIN_URL")
+logger = logging.getLogger(__name__)
+from app.handlers.kong_handlers import create_kong_consumer, create_jwt_credentials, get_kong_jwt_token
+
+
+
+
 async def admin_signup_fn(admin_form: AdminSignUpModel, session: DB_SESSION):
-    admin = session.exec(select(Admin).where(
-        Admin.admin_email == admin_form.admin_email)).first()
+    admin = session.exec(select(Admin).where(Admin.admin_email == admin_form.admin_email)).first()
     if admin:
         raise HTTPException(status_code=409, detail="Admin Already Exists. Please try signing in.")
+    
     hashed_password = await password_hashing(admin_form.admin_password)
     admin_form.admin_password = hashed_password
     admin = Admin(**admin_form.model_dump())
     session.add(admin)
     session.commit()
     session.refresh(admin)
-    data = {
-        "admin_name": admin.admin_name,
-        "admin_email": admin.admin_email
-    }
-    access_token = await generate_token(data=data, expiry_time=ADMIN_ACCESS_EXPIRY_TIME)
-    refresh_token = await generate_token(data=data, expiry_time=ADMIN_REFRESH_EXPIRY_TIME)
-
-    access_expiry_time = ADMIN_ACCESS_EXPIRY_TIME.total_seconds()
-    refresh_expiry_time = ADMIN_REFRESH_EXPIRY_TIME.total_seconds()
-
-    token = AdminToken(admin_id=admin.admin_id, refresh_token=refresh_token)
-    session.add(token)
-    session.commit()
-    session.refresh(token)
-    return {"access_token": {
-        "token": access_token,
-        "expiry_time": access_expiry_time
-        },
-        "refresh_token": {
-        "token": refresh_token,
-        "expiry_time": refresh_expiry_time
-        }
-    }
-
+    
+    kong_consumer = await create_kong_consumer(admin.admin_email)
+    jwt_credentials = await create_jwt_credentials(admin.admin_email)
+    
+    return {"message": "Admin created successfully, please login to receive tokens"}
 
 async def admin_login_fn(login_form: AdminLoginModel, session: DB_SESSION):
     statement = select(Admin).where(Admin.admin_email == login_form.admin_email)
@@ -57,33 +47,10 @@ async def admin_login_fn(login_form: AdminLoginModel, session: DB_SESSION):
     elif not verify_password(admin.admin_password, login_form.admin_password):
         raise HTTPException(status_code=401, detail="Invalid password")
 
-    else:
-        data = {
-            "admin_name": admin.admin_name,
-            "admin_email": admin.admin_email
-        }
-        access_token = await generate_token(data=data, expiry_time=ADMIN_ACCESS_EXPIRY_TIME)
-        refresh_token = await generate_token(data=data, expiry_time=ADMIN_REFRESH_EXPIRY_TIME)
-        
-        access_expiry_time = ADMIN_ACCESS_EXPIRY_TIME.total_seconds()
-        refresh_expiry_time = ADMIN_REFRESH_EXPIRY_TIME.total_seconds()
+    jwt_credentials = await create_jwt_credentials(admin.admin_email)
+    kong_token = await get_kong_jwt_token(admin.admin_email, jwt_credentials["secret"])
 
-        to_update_token = session.exec(
-            select(AdminToken).where(Admin.admin_id == admin.admin_id)).one()
-        to_update_token.refresh_token = refresh_token
-        session.add(to_update_token)
-        session.commit()
-        session.refresh(to_update_token)
-        return {"access_token": {
-        "token": access_token,
-        "expiry_time": access_expiry_time
-        },
-        "refresh_token": {
-        "token": refresh_token,
-        "expiry_time": refresh_expiry_time
-        }
-    }
-
+    return {"token": kong_token}
 
 
 def admin_get(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
@@ -91,9 +58,8 @@ def admin_get(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[
         if token:
             data = decode_token(token)
             admin_email = data["admin_email"]
-            admin = session.exec(select(Admin).where(
-                Admin.admin_email == admin_email)).first()
+            admin = session.exec(select(Admin).where(Admin.admin_email == admin_email)).first()
             return admin
-
-    except:
+    except Exception as e:
+        logger.error(f"Failed to decode token: {str(e)}")
         raise HTTPException(status_code=404, detail="Token not found")

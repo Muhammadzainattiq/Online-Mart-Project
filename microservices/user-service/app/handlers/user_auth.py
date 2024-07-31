@@ -1,66 +1,43 @@
 from typing import Annotated
 from sqlmodel import Session, select
 from fastapi import Depends, HTTPException
+import httpx
+import os
+import logging
 from app.db.db_connection import get_session
 from app.handlers.auth_handlers import verify_password
-from app.settings import ACCESS_EXPIRY_TIME, REFRESH_EXPIRY_TIME
-from app.models.user_models import (User, UserToken, SignUpModel, LoginModel)
-from app.handlers.auth_handlers import password_hashing, verify_password, generate_token, decode_token
+from app.models.user_models import User, SignUpModel, LoginModel
+from app.handlers.auth_handlers import password_hashing, verify_password, decode_token
 from fastapi.security import OAuth2PasswordBearer
 from app.kafka.producer import KAFKA_PRODUCER, produce_message
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_user")
+from app.handlers.kong_handlers import create_kong_consumer, create_jwt_credentials, get_kong_jwt_token
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_user")
 DB_SESSION = Annotated[Session, Depends(get_session)]
 
+KONG_ADMIN_URL = os.getenv("KONG_ADMIN_URL", "http://localhost:8001")
+logger = logging.getLogger(__name__)
+
+
 async def signup_fn(user_form: SignUpModel, session: DB_SESSION, producer: KAFKA_PRODUCER):
-    user = session.exec(select(User).where(
-        User.user_email == user_form.user_email)).first()
+    user = session.exec(select(User).where(User.user_email == user_form.user_email)).first()
     if user:
         raise HTTPException(status_code=409, detail="User Already Exists. Please try signing in.")
     
     hashed_password = await password_hashing(user_form.user_password)
     user_form.user_password = hashed_password
-    
-    print("User Form", user_form)
-    
     user = User(**user_form.model_dump())
-    
     session.add(user)
     session.commit()
-    session.refresh(user)  # Ensure user_id is populated
+    session.refresh(user)
     
-    # Produce the event after user is committed and refreshed
-    user_dict = user.model_dump()
-    event_dict = {"event_type": "user_creation", **user_dict}
+    kong_consumer = await create_kong_consumer(user.user_email)
+    jwt_credentials = await create_jwt_credentials(user.user_email)
+    
+    event_dict = {"event_type": "user_creation", **user.model_dump()}
     await produce_message("user_creation", event_dict, producer)
     
-    data = {
-        "user_name": user.user_name,
-        "user_email": user.user_email
-    }
-    
-    access_token = await generate_token(data=data, expiry_time=ACCESS_EXPIRY_TIME)
-    refresh_token = await generate_token(data=data, expiry_time=REFRESH_EXPIRY_TIME)
-    
-    access_expiry_time = ACCESS_EXPIRY_TIME.total_seconds()
-    refresh_expiry_time = REFRESH_EXPIRY_TIME.total_seconds()
-    
-    token = UserToken(user_id=user.user_id, refresh_token=refresh_token)
-    session.add(token)
-    session.commit()
-    session.refresh(token)
-    
-    return {
-        "access_token": {
-            "token": access_token,
-            "expiry_time": access_expiry_time
-        },
-        "refresh_token": {
-            "token": refresh_token,
-            "expiry_time": refresh_expiry_time
-        }
-    }
-
+    return {"message": "User created successfully, please login to receive tokens"}
 
 async def login_fn(login_form: LoginModel, session: DB_SESSION):
     statement = select(User).where(User.user_email == login_form.user_email)
@@ -71,33 +48,10 @@ async def login_fn(login_form: LoginModel, session: DB_SESSION):
     elif not verify_password(user.user_password, login_form.user_password):
         raise HTTPException(status_code=401, detail="Invalid password")
 
-    else:
-        data = {
-            "user_name": user.user_name,
-            "user_email": user.user_email
-        }
-        access_token = await generate_token(data=data, expiry_time=ACCESS_EXPIRY_TIME)
-        refresh_token = await generate_token(data=data, expiry_time=REFRESH_EXPIRY_TIME)
-        
-        access_expiry_time = ACCESS_EXPIRY_TIME.total_seconds()
-        refresh_expiry_time = REFRESH_EXPIRY_TIME.total_seconds()
+    jwt_credentials = await create_jwt_credentials(user.user_email)
+    kong_token = await get_kong_jwt_token(user.user_email, jwt_credentials["secret"])
 
-        to_update_token = session.exec(
-            select(UserToken).where(UserToken.user_id == user.user_id)).one()
-        to_update_token.refresh_token = refresh_token
-        session.add(to_update_token)
-        session.commit()
-        session.refresh(to_update_token)
-        return {"access_token": {
-        "token": access_token,
-        "expiry_time": access_expiry_time
-        },
-        "refresh_token": {
-        "token": refresh_token,
-        "expiry_time": refresh_expiry_time
-        }
-    }
-
+    return {"token": kong_token}
 
 
 def user_get(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
@@ -105,9 +59,9 @@ def user_get(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[S
         if token:
             data = decode_token(token)
             user_email = data["user_email"]
-            user = session.exec(select(User).where(
-                User.user_email == user_email)).first()
+            user = session.exec(select(User).where(User.user_email == user_email)).first()
             return user
-
-    except:
+    except Exception as e:
+        logger.error(f"Failed to decode token: {str(e)}")
         raise HTTPException(status_code=404, detail="Token not found")
+

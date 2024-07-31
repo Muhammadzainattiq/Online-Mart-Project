@@ -35,6 +35,8 @@ async def delete_payment(payment_id: int, session: Session):
         raise HTTPException(status_code=404, detail="Payment not found")
     session.delete(payment)
     session.commit()
+    return {"message": "Payment successfully deleted"}
+
 
 async def create_payment_user(user_id: int, card_number: str, card_cvc: str, card_expiry: str, session: Session) -> PaymentUser:
     payment_user = PaymentUser(
@@ -48,11 +50,7 @@ async def create_payment_user(user_id: int, card_number: str, card_cvc: str, car
     session.refresh(payment_user)
     return payment_user
 
-async def read_all_user_payments(user_id: int, session: Session) -> PaymentUser:
-    payment_user = session.get(PaymentUser, user_id)
-    if not payment_user:
-        raise HTTPException(status_code=404, detail="Payment user not found")
-    return payment_user
+
 
 async def update_payment_method(user_id: int, session: Session, card_number: Optional[str] = None, card_cvc: Optional[str] = None, card_expiry: Optional[str] = None) -> PaymentUser:
     payment_user = session.get(PaymentUser, user_id)
@@ -69,12 +67,14 @@ async def update_payment_method(user_id: int, session: Session, card_number: Opt
     session.refresh(payment_user)
     return payment_user
 
-async def delete_payment_by_id(user_id: int, session: Session):
-    payment_user = session.get(PaymentUser, user_id)
+async def delete_payment_by_id(payment_id: int, session: Session):
+    payment_user = session.get(PaymentUser, payment_id)
     if not payment_user:
         raise HTTPException(status_code=404, detail="Payment user not found")
     session.delete(payment_user)
     session.commit()
+    return {"message": "Payment user deleted successfully"}
+
 
 async def get_payments_by_user(user_id: int, session: Session) -> List[Payment]:
     statement = select(Payment).where(Payment.user_id == user_id)

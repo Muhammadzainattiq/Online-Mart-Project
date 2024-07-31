@@ -12,15 +12,6 @@ class TokenDecodingError(Exception):
 
 #This function will be used to generate both the access token and the refresh token. when we want to generate the refresh token we will pass it the refresh token expiry time and when we want to generate the access token, we will pass it the access token expiry time.
 
-async def generate_token(data: dict, expiry_time: timedelta):
-    try:
-        to_encode_data = data.copy()
-        expire = datetime.now(timezone.utc) + expiry_time
-        to_encode_data.update({"exp": expire.timestamp()})
-        token = jwt.encode(to_encode_data, key=SECRET_KEY, algorithm=ALGORITHM)
-        return token
-    except JWTError as je:
-        raise TokenGenerationError(f"JWT error occurred during token generation: {je}")
 
 
 async def decode_token(token: str):

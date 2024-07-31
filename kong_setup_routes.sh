@@ -424,7 +424,7 @@ curl -i -X POST http://localhost:8001/routes \
 
 # Get Payment by ID Route
 curl -i -X POST http://localhost:8001/routes \
-    --data "paths[]=/payment/payments/{payment_id}" \
+    --data "paths[]=/payment/get_payment_by_id/{payment_id}" \
     --data "service.name=payment_service" \
     --data "methods[]=GET" \
     --data "strip_path=false" \

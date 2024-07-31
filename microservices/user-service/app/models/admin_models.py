@@ -25,12 +25,5 @@ class AdminModel(AdminSignUpModel):
 
 class Admin(AdminSignUpModel, table = True):
     admin_id : int | None = Field(default=None, primary_key=True)
-    tokens: List["AdminToken"] = Relationship(back_populates="admin")
 
 #=======================================================================================================
-
-class AdminToken(SQLModel, table=True):
-    token_id: int = Field(default=None, primary_key=True)
-    admin_id: int = Field(foreign_key="admin.admin_id")
-    refresh_token: str
-    admin: "Admin" = Relationship(back_populates="tokens")
