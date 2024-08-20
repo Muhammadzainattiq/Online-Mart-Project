@@ -20,7 +20,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def home():
-    return "Welcome to Online Mart Project"
+    return "Welcome to User Service"
 
 @app.get("/user")
 def home():

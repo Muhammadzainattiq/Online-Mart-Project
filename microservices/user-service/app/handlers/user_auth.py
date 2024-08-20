@@ -19,7 +19,7 @@ KONG_ADMIN_URL = os.getenv("KONG_ADMIN_URL", "http://localhost:8001")
 logger = logging.getLogger(__name__)
 
 
-async def signup_fn(user_form: SignUpModel, session: DB_SESSION, producer: KAFKA_PRODUCER):
+async def signup_fn(user_form: SignUpModel, session: Annotated[Session, Depends(get_session)], producer: KAFKA_PRODUCER):
     user = session.exec(select(User).where(User.user_email == user_form.user_email)).first()
     if user:
         raise HTTPException(status_code=409, detail="User Already Exists. Please try signing in.")
@@ -31,15 +31,15 @@ async def signup_fn(user_form: SignUpModel, session: DB_SESSION, producer: KAFKA
     session.commit()
     session.refresh(user)
     
-    kong_consumer = await create_kong_consumer(user.user_email)
-    jwt_credentials = await create_jwt_credentials(user.user_email)
+    # kong_consumer = await create_kong_consumer(user.user_email)
+    # jwt_credentials = await create_jwt_credentials(user.user_email)
     
     event_dict = {"event_type": "user_creation", **user.model_dump()}
     await produce_message("user_creation", event_dict, producer)
     
     return {"message": "User created successfully, please login to receive tokens"}
 
-async def login_fn(login_form: LoginModel, session: DB_SESSION):
+async def login_fn(login_form: LoginModel, session: Annotated[Session, Depends(get_session)]):
     statement = select(User).where(User.user_email == login_form.user_email)
     user = session.exec(statement).first()
 

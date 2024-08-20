@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlmodel import Relationship, SQLModel, Field
+from sqlmodel import Relationship, SQLModel, Field, BigInteger
 from pydantic import EmailStr
 
 # Models for User and Authentication
@@ -10,7 +10,7 @@ class LoginModel(SQLModel):
 
 class SignUpModel(LoginModel):
     user_name: str
-    phone_number: int = Field()
+    phone_number: str = Field(max_length=15)
     user_address: str = Field(max_length=70)
 
 class UserModel(SignUpModel):
@@ -22,7 +22,7 @@ class User(UserModel, table=True):
 
 class UserUpdate(SQLModel):
     user_name: Optional[str] = None
-    phone_number: Optional[int] = None
+    phone_number: Optional[str] = None
     user_email: Optional[EmailStr] = None
     user_password: Optional[str] = None
 

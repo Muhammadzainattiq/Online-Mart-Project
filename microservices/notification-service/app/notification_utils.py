@@ -6,6 +6,9 @@ from sqlmodel import Session
 from app.db.db_connection import engine
 from app.models.notification_models import NotificationCreate, Notification, NotificationUser
 from app import settings
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 async def create_notification_and_send(notification: NotificationCreate):
     print("Starting create_notification_and_send function")
@@ -55,8 +58,36 @@ async def get_user_email_from_id(user_id):
 
 
 async def send_email(user_email, message):
-  	#send email to user_email via a api
-    pass
+    # SMTP server details
+    smtp_server = "smtp.gmail.com"
+    port = 587  # For starttls
+    sender_email = "zainatteeq@gmail.com"
+    password = "pwfgukbbushperbr"
+
+    # Email details
+    receiver_email = user_email
+    subject = "Zain's Online Mart"
+    body = message
+
+    # Create the email
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Sending the email
+    try:
+        server = smtplib.SMTP(smtp_server, port)
+        server.starttls()  # Secure the connection
+        server.login(sender_email, password)
+        text = msg.as_string()
+        server.sendmail(sender_email, receiver_email, text)
+        print("Email sent successfully!")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        server.quit()
 
 
 async def get_user_name_from_id(user_id):

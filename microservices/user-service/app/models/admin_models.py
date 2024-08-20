@@ -12,7 +12,7 @@ class AdminLoginModel(SQLModel):
 
 class AdminSignUpModel(AdminLoginModel):
     admin_name:str
-    phone_number: int = Field()
+    phone_number: str = Field(max_length=15)
     admin_address:str = Field(max_length=70)
     # admin_email:str
     # admin_password:str

@@ -12,7 +12,6 @@ from fastapi.security import OAuth2PasswordBearer
 from app.kafka.producer import KAFKA_PRODUCER, produce_message
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_user")
-DB_SESSION = Annotated[Session, Depends(get_session)]
 
 KONG_ADMIN_URL = os.getenv("KONG_ADMIN_URL")
 logger = logging.getLogger(__name__)
@@ -21,7 +20,7 @@ from app.handlers.kong_handlers import create_kong_consumer, create_jwt_credenti
 
 
 
-async def admin_signup_fn(admin_form: AdminSignUpModel, session: DB_SESSION):
+async def admin_signup_fn(admin_form: AdminSignUpModel, session: Annotated[Session, Depends(get_session)]):
     admin = session.exec(select(Admin).where(Admin.admin_email == admin_form.admin_email)).first()
     if admin:
         raise HTTPException(status_code=409, detail="Admin Already Exists. Please try signing in.")
@@ -38,7 +37,7 @@ async def admin_signup_fn(admin_form: AdminSignUpModel, session: DB_SESSION):
     
     return {"message": "Admin created successfully, please login to receive tokens"}
 
-async def admin_login_fn(login_form: AdminLoginModel, session: DB_SESSION):
+async def admin_login_fn(login_form: AdminLoginModel, session: Annotated[Session, Depends(get_session)]):
     statement = select(Admin).where(Admin.admin_email == login_form.admin_email)
     admin = session.exec(statement).first()
 

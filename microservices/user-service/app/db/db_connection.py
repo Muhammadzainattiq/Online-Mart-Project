@@ -17,6 +17,9 @@ engine = create_engine(connection_string, connect_args={"sslmode": "disable"}, p
 # Function to create tables
 def create_tables():
     SQLModel.metadata.create_all(engine)
+    
+def create_test_tables(eng):
+    SQLModel.metadata.create_all(eng)
 
 # Context manager for SQLModel session
 def get_session():

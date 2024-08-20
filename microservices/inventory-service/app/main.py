@@ -37,6 +37,10 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with lifespan context
 app = FastAPI(lifespan=lifespan)
 
+@app.get("/")
+async def home():
+    return "Welcome to Inventory Service"
+
 @app.get("/inventory")
 def home():
     return "Welcome to Inventory Service"

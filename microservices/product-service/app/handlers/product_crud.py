@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from typing import Annotated
-from app.models.product_models import ProductCategory, ProductColor, ProductCreate, ProductSize, ProductUpdate, Product
+from app.models.product_models import ProductCategory, ProductColor, ProductCreate, ProductSize, ProductUpdate, Product, Category
 from app.models.product_models import Color
 from app.models.product_models import Size
 from app.db.db_connection import DB_SESSION
@@ -112,11 +112,22 @@ async def read_products_by_name(name: str, session: DB_SESSION):
 
 
 async def read_products_by_category(category: str, session: DB_SESSION):
-    db_statement = select(Product).where(Product.product_category == category)
-    products = session.exec(db_statement).all()
-    if not products:
-        raise HTTPException(
-            status_code=404, detail="No Product found in this category")
+    # Find the category by its name
+    category_obj = session.exec(select(Category).where(Category.category_name == category)).first()
+    
+    if not category_obj:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    # Fetch products associated with this category
+    product_categories = session.exec(select(ProductCategory).where(ProductCategory.category_id == category_obj.category_id)).all()
+    
+    if not product_categories:
+        raise HTTPException(status_code=404, detail="No products found for this category")
+
+    # Fetch the products from the product IDs
+    product_ids = [pc.product_id for pc in product_categories]
+    products = session.exec(select(Product).where(Product.product_id.in_(product_ids))).all()
+
     return products
 
 

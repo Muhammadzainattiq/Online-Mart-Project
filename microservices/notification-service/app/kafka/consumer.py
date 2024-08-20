@@ -113,6 +113,7 @@ async def handle_user_deletion(event):
 
     with Session(engine) as session:
         notification_user = session.get(NotificationUser, user_id)
+        print(">>>>>notification user", notification_user)
         if notification_user:
             session.delete(notification_user)
             session.commit()
